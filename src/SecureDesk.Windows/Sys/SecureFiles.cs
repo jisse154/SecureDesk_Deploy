@@ -10,8 +10,13 @@ public static class SecureFiles
     public static readonly SecurityIdentifier System = new(WellKnownSidType.LocalSystemSid, null);
     public static readonly SecurityIdentifier Administrators = new(WellKnownSidType.BuiltinAdministratorsSid, null);
 
+    /// <summary>
+    /// Racine des données. SECUREDESK_DATA_DIR ne sert qu'aux tests d'intégration (simuler serveur et client sur un même runner).
+    /// </summary>
     public static string ProgramDataRoot =>
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "SecureDesk");
+        Environment.GetEnvironmentVariable("SECUREDESK_DATA_DIR") is { Length: > 0 } overrideDir
+            ? overrideDir
+            : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "SecureDesk");
 
     public static string LogsDir => Path.Combine(ProgramDataRoot, "logs");
     public static string WireGuardDir => Path.Combine(ProgramDataRoot, "wireguard");

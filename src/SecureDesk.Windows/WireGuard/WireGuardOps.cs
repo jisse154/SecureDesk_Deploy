@@ -29,13 +29,14 @@ public sealed class WireGuardOps(ILog log, ProcessRunner runner) : IWgKeyGenerat
 
     public static bool IsInstalled => File.Exists(WireGuardExe) && File.Exists(WgExe);
 
-    public void EnsureInstalled(InstallerManifest manifest, string? localMsi, string? sha256 = null)
+    /// <summary>Installe WireGuard si nécessaire. Retourne true si SecureDesk vient de l'installer.</summary>
+    public bool EnsureInstalled(InstallerManifest manifest, string? localMsi, string? sha256 = null)
     {
         ArgumentNullException.ThrowIfNull(manifest);
         if (IsInstalled)
         {
             log.Info("WireGuard est déjà installé.");
-            return;
+            return false;
         }
 
         var source = new InstallerSource(log, runner);
@@ -51,6 +52,8 @@ public sealed class WireGuardOps(ILog log, ProcessRunner runner) : IWgKeyGenerat
         {
             throw new InstallerVerificationException($"wireguard.exe installé : {sig}");
         }
+
+        return true;
     }
 
     // ---------- Clés (pipes stdin/stdout : jamais d'argument ni de fichier temporaire) ----------

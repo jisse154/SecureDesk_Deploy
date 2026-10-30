@@ -40,7 +40,29 @@ public sealed class InstallerSource(ILog log, ProcessRunner runner)
         }
 
         Verify(entry, path, overrideSha256);
-        return path;
+        return path.EndsWith(".zip", StringComparison.OrdinalIgnoreCase) ? ExtractMsi(entry, path) : path;
+    }
+
+    /// <summary>
+    /// Certains éditeurs (multiOTP) publient le MSI dans une archive zip : l'archive est vérifiée (empreinte épinglée),
+    /// puis le MSI x64 est extrait dans un dossier protégé.
+    /// </summary>
+    private string ExtractMsi(InstallerEntry entry, string zipPath)
+    {
+        var dir = Path.Combine(DownloadDir, Path.GetFileNameWithoutExtension(zipPath));
+        if (Directory.Exists(dir))
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+
+        SecureFiles.EnsureProtectedDirectory(dir);
+        System.IO.Compression.ZipFile.ExtractToDirectory(zipPath, dir);
+        var msis = Directory.GetFiles(dir, "*.msi", SearchOption.AllDirectories);
+        var msi = msis.FirstOrDefault(m => Path.GetFileName(m).Contains("x64", StringComparison.OrdinalIgnoreCase))
+                  ?? (msis.Length == 1 ? msis[0] : throw new InstallerVerificationException($"{entry.DisplayName} : MSI x64 introuvable dans l'archive."));
+        var sig = Authenticode.Verify(msi);
+        log.Info($"{entry.DisplayName} : MSI extrait {Path.GetFileName(msi)}, sha256:{FileHash.Sha256Hex(msi)}, {sig}");
+        return msi;
     }
 
     public void Verify(InstallerEntry entry, string path, string? overrideSha256 = null)

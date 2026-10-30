@@ -1,9 +1,11 @@
 <Solution>
   <Folder Name="/src/">
+    <Project Path="src/SecureDesk.App/SecureDesk.App.csproj" />
     <Project Path="src/SecureDesk.Core/SecureDesk.Core.csproj" />
     <Project Path="src/SecureDesk.Windows/SecureDesk.Windows.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/SecureDesk.Core.Tests/SecureDesk.Core.Tests.csproj" />
+    <Project Path="tests/SecureDesk.Windows.IntegrationTests/SecureDesk.Windows.IntegrationTests.csproj" />
   </Folder>
 </Solution>

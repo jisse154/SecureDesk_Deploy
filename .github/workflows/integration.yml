@@ -1,0 +1,39 @@
+name: Intégration Windows
+
+on:
+  push:
+    branches: ["**"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  integration:
+    name: Intégration (runner Windows éphémère, administrateur)
+    runs-on: windows-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+      - name: Épinglage des installeurs officiels (WireGuard, multiOTP)
+        shell: pwsh
+        run: ./scripts/pin-installers.ps1
+      - name: Build
+        run: dotnet build SecureDesk.slnx -c Release
+      - name: Tests d'intégration (pare-feu, ACL, stratégies, Authenticode, multiOTP désactivé)
+        env:
+          SECUREDESK_INTEGRATION: "1"
+          SECUREDESK_IT_MULTIOTP: "1"
+        run: dotnet test tests/SecureDesk.Windows.IntegrationTests -c Release --no-build --logger "console;verbosity=normal"
+      - name: Publication de l'exécutable
+        run: dotnet publish src/SecureDesk.App -c Release -o publish
+      - name: Scénario de bout en bout (init → join → add-peer → handshake → uninstall)
+        shell: pwsh
+        run: ./scripts/integration-e2e.ps1 -Exe "$PWD/publish/SecureDesk.exe"
+      - name: Journaux (en cas d'échec)
+        if: failure()
+        shell: pwsh
+        run: Get-ChildItem "$env:RUNNER_TEMP/sd-e2e" -Recurse -Filter *.log | ForEach-Object { Write-Host "== $($_.FullName)"; Get-Content $_.FullName -Tail 200 }

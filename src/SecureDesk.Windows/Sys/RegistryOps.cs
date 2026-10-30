@@ -99,6 +99,16 @@ public static class RegistryOps
                     key?.DeleteValue(name, throwOnMissingValue: false);
                 }
 
+                // Clé de stratégie devenue vide : on la retire aussi (retour à l'état initial).
+                using (var check = hklm.OpenSubKey(path))
+                {
+                    if (check is { ValueCount: 0, SubKeyCount: 0 } && path.StartsWith(@"SOFTWARE\Policies\", StringComparison.OrdinalIgnoreCase))
+                    {
+                        check.Close();
+                        hklm.DeleteSubKey(path, throwOnMissingSubKey: false);
+                    }
+                }
+
                 break;
             case "dword":
                 using (var key = hklm.CreateSubKey(path, writable: true))
