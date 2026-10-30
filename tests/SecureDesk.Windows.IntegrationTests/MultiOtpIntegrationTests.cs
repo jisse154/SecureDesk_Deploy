@@ -9,7 +9,7 @@ namespace SecureDesk.Windows.IntegrationTests;
 /// activé ici (aucune ouverture de session interactive n'a lieu sur un runner). Parcours CLI complet de l'enrôlement.
 /// </summary>
 [Collection("systeme")]
-public class MultiOtpIntegrationTests
+public class MultiOtpIntegrationTests(Xunit.Abstractions.ITestOutputHelper output)
 {
     [Fact]
     public void Installation_desactivee_enrolement_verification_codes_de_secours()
@@ -22,6 +22,19 @@ public class MultiOtpIntegrationTests
         var manifest = InstallerManifest.Embedded();
         Assert.False(string.IsNullOrEmpty(manifest.MultiOtp.Sha256), "multiOTP non épinglé (scripts/pin-installers.ps1)");
         var log = Integration.Log();
+        try
+        {
+            Run(manifest, log);
+        }
+        finally
+        {
+            // Journal déjà masqué (Redactor) : aucun secret n'y figure.
+            output.WriteLine(log.AllText());
+        }
+    }
+
+    private static void Run(InstallerManifest manifest, SecureDesk.Core.Logging.MemoryLog log)
+    {
         var ops = new MultiOtpOps(log, Integration.Runner(log));
         ops.Install(manifest, null, null, null);
 

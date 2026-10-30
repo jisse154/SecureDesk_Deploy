@@ -29,7 +29,7 @@ public sealed class ProcessRunner(ILog log)
             UseShellExecute = false,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
-            RedirectStandardInput = stdin is not null,
+            RedirectStandardInput = true,
             CreateNoWindow = true,
             StandardOutputEncoding = Encoding.UTF8,
             StandardErrorEncoding = Encoding.UTF8,
@@ -60,11 +60,13 @@ public sealed class ProcessRunner(ILog log)
         };
         p.BeginOutputReadLine();
         p.BeginErrorReadLine();
+        // Entrée standard toujours fermée : un outil tiers ne peut jamais rester bloqué en attente d'une saisie.
         if (stdin is not null)
         {
             p.StandardInput.Write(stdin);
-            p.StandardInput.Close();
         }
+
+        p.StandardInput.Close();
 
         if (!p.WaitForExit(timeout ?? DefaultTimeout))
         {

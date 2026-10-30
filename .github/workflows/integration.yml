@@ -24,6 +24,7 @@ jobs:
       - name: Build
         run: dotnet build SecureDesk.slnx -c Release
       - name: Tests d'intégration (pare-feu, ACL, stratégies, Authenticode, multiOTP désactivé)
+        timeout-minutes: 15
         env:
           SECUREDESK_INTEGRATION: "1"
           SECUREDESK_IT_MULTIOTP: "1"
@@ -31,9 +32,11 @@ jobs:
       - name: Publication de l'exécutable
         run: dotnet publish src/SecureDesk.App -c Release -o publish
       - name: Scénario de bout en bout (init → join → add-peer → handshake → uninstall)
+        timeout-minutes: 20
         shell: pwsh
         run: ./scripts/integration-e2e.ps1 -Exe "$PWD/publish/SecureDesk.exe"
       - name: Journaux (en cas d'échec)
         if: failure()
         shell: pwsh
-        run: Get-ChildItem "$env:RUNNER_TEMP/sd-e2e" -Recurse -Filter *.log | ForEach-Object { Write-Host "== $($_.FullName)"; Get-Content $_.FullName -Tail 200 }
+        run: |
+          Get-ChildItem "$env:RUNNER_TEMP/sd-e2e", "$env:ProgramData/SecureDesk" -Recurse -Filter *.log -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "== $($_.FullName)"; Get-Content $_.FullName -Tail 150 }
