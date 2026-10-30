@@ -1,0 +1,26 @@
+{
+  "wireguard": {
+    "displayName": "WireGuard pour Windows (x64)",
+    "version": "",
+    "url": "",
+    "sha256": "",
+    "signerSubjectContains": "WireGuard LLC",
+    "requireAuthenticode": true
+  },
+  "vcredist": {
+    "displayName": "Microsoft Visual C++ Redistributable 2015-2022 (x64)",
+    "version": "",
+    "url": "https://aka.ms/vs/17/release/vc_redist.x64.exe",
+    "sha256": "",
+    "signerSubjectContains": "Microsoft Corporation",
+    "requireAuthenticode": true
+  },
+  "multiotp": {
+    "displayName": "multiOTP Credential Provider (x64)",
+    "version": "",
+    "url": "",
+    "sha256": "",
+    "signerSubjectContains": "",
+    "requireAuthenticode": false
+  }
+}

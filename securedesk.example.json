@@ -1,0 +1,38 @@
+{
+  // Exemple de configuration SecureDesk (mode ligne de commande : SecureDesk.exe init --config securedesk.example.json).
+  // Aucun secret ici : mots de passe et phrases de passe sont toujours demandés à l'écran.
+  "schemaVersion": 1,
+  "server": {
+    "endpointHost": "monbureau.ddns.net",
+    "listenPort": 41873,
+    "tunnelSubnet": "10.77.0.0/24",
+    "tunnelName": "securedesk",
+    "allowLan": false,
+    "lanSubnet": null,
+    "users": [
+      { "name": "utilisateur1", "create": true, "fullName": "Utilisateur distant" },
+      { "name": "utilisateur2", "create": true, "fullName": "Utilisateur sur place" }
+    ],
+    "redirections": { "clipboard": false, "drives": false, "printers": false },
+    "idleTimeoutMinutes": 30,
+    "disconnectedTimeoutMinutes": 60,
+    "passwordPolicy": { "minLength": 14, "lockoutThreshold": 5, "lockoutDurationMinutes": 30, "lockoutWindowMinutes": 30 },
+    "extraProtectedTcpPorts": [ 80, 443 ],
+    "stopTsplusWebServer": true,
+    "twoFactor": { "scope": "RemoteOnly", "accounts": [], "probationMinutes": 20 },
+    "ntpServer": "time.windows.com",
+    "invitationValidityDays": 7
+  },
+  "client": {
+    "autoStartTunnel": false,
+    "createRdpShortcut": true,
+    "rdpShortcutName": "Bureau SecureDesk"
+  },
+  "installers": {
+    "wireGuardMsi": null,
+    "multiOtpMsi": null,
+    "vcRedist": null,
+    "tsplusSetup": null,
+    "tsplusSilent": false
+  }
+}

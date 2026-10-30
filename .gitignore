@@ -1,0 +1,9 @@
+bin/
+obj/
+artifacts/
+publish/
+TestResults/
+*.user
+.vs/
+*.sdpair
+*.conf

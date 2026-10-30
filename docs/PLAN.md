@@ -1,6 +1,6 @@
-# SecureDesk Deploy — Plan de conception (v0, à valider)
+# SecureDesk — Plan de conception
 
-> Statut : **proposition soumise pour validation**. Aucun code n'est écrit avant votre accord.
+> Statut : **validé le 30/10/2026** (voir le §14). Document vivant, mis à jour à chaque incrément.
 > Les mentions **[VÉRIFIÉ]** renvoient à une source officielle consultée pendant la rédaction.
 > Les mentions **[À VÉRIFIER]** signalent un comportement non documenté ou une source inaccessible : chacune devient soit une question pour vous, soit un point de la recette manuelle.
 
@@ -161,7 +161,7 @@ PersistentKeepalive = 25
 
 Ports protégés, paramétrables :
 - port RDP effectif, lu dans `HKLM\SYSTEM\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp\PortNumber`, en TCP et UDP ;
-- ports web TSplus déclarés : 80 et 443 par défaut, modifiables car TSplus permet de les changer.
+- ports web TSplus : 80 et 443 par défaut, modifiables. **Ils doivent impérativement être protégés, car TSplus y achemine aussi RDP** (voir le §5).
 
 **Stratégie, en tenant compte d'un piège du pare-feu Windows :** une règle *block* l'emporte toujours sur une règle *allow*. Une règle « bloquer partout » couperait donc aussi le tunnel. La stratégie retenue :
 1. `SecureDesk-Allow-RDP-Tunnel` : autorise les ports protégés depuis `10.77.0.0/24`, plus en option `SecureDesk-Allow-RDP-LAN` depuis le sous-réseau LAN détecté. Les deux règles s'appliquent à tous les profils.
@@ -177,25 +177,25 @@ Ports protégés, paramétrables :
 
 ## 5. TSplus
 
-**Point bloquant de vérification :** **`docs.tsplus.net` est inaccessible depuis ma session cloud** (refusé par la politique réseau de l'environnement). Je n'ai donc **pas pu vérifier** :
-- l'existence de commutateurs d'installation silencieuse ;
-- les noms des services TSplus ;
-- l'emplacement de la version installée.
+Sources consultées **[VÉRIFIÉ]** sur docs.tsplus.net : `installation`, `commands-list`, `built-in-web-server`, `securing-a-terminal-service-plus-server`, `volume-licensing-install`, `portable-client-generator-cli`, `activating-your-license`.
 
-Conformément à votre consigne de ne rien inventer, le plan par défaut est le suivant :
-- **Détection :** entrées « Désinstaller » du registre (`HKLM\SOFTWARE\[WOW6432Node\]Microsoft\Windows\CurrentVersion\Uninstall\*`, `DisplayName` contenant « TSplus », `DisplayVersion`). Ce mécanisme est générique Windows et ne dépend pas de TSplus. État des services : je les rechercherai par nom d'affichage contenant « TSplus » et le signalerai comme heuristique.
-- **Installation :** **guidée et manuelle.** L'outil affiche les étapes (lancer l'installeur fourni, redémarrer, activer la licence dans l'AdminTool), puis **attend votre confirmation** et revérifie la détection.
-- Je n'ajoute l'installation silencieuse que si vous m'ouvrez l'accès à `docs.tsplus.net` (ou me collez la page officielle) et que la documentation la décrit.
-- **À faire manuellement dans l'AdminTool, avec instructions affichées :**
-  - désactiver ou laisser non exposé le serveur web TSplus (le portail web n'est pas utilisé) ;
-  - ne pas activer le 2FA TSplus ;
-  - noter le port RDP si vous le changez.
+### 5.1 Ce que la documentation dit et ce que l'outil en fait
 
-**Activation de licence :** jamais automatisée (votre consigne).
+| Fait documenté | Conséquence dans l'outil |
+|---|---|
+| Les outils d'administration sont dans `C:\Program Files (x86)\TSplus\UserDesktop\files` (`AdminTool.exe`). Le désinstalleur est `C:\Program Files (x86)\TSplus\unins000.exe`. | **Détection** par la présence d'`AdminTool.exe` (version tirée des métadonnées du fichier) et par les entrées « Désinstaller » du registre (`DisplayName` contenant « TSplus », `DisplayVersion`). |
+| Le programme d'installation accepte **`/verysilent`** (page *Volume Licensing – install*). | **Installation silencieuse en option**, désactivée par défaut et seulement avec un installeur fourni localement : `Setup-TSplus.exe /verysilent`. L'installation reste **guidée** par défaut. Un redémarrage est nécessaire après coup ; l'outil le signale et ne redémarre jamais seul. |
+| L'installeur télécharge le produit pendant l'installation. Une option « Advanced » permet de ne pas installer *Advanced Security*. | Aucune option documentée ne désactive *Advanced Security* en mode silencieux. **[À VÉRIFIER]** En `/verysilent`, l'essai *Advanced Security* est probablement installé ; si vous voulez l'éviter, utilisez l'installation guidée (mode Advanced). |
+| « TSplus Remote Access will require you to manually enter your username and password at each login. » | **Cause probable des doubles invites** avec NLA et multiOTP. Voir le §7.4 : c'est le test prioritaire de la recette. |
+| **« Regardless the RDP port that has been set, the RDP will also be available on the HTTP and on the HTTPS port number! »** (serveur web intégré, ports 80 et 443 par défaut) | **Les ports web TSplus sont un second chemin vers RDP.** Ils figurent dans la liste des ports protégés du pare-feu (autorisés depuis le tunnel seulement, bloqués ailleurs). De plus, l'outil **arrête le serveur web** par la commande documentée `AdminTool.exe /webstop`, et `uninstall` exécute `/webstart` s'il était actif à l'origine. **[À VÉRIFIER]** La doc ne dit pas si `/webstop` persiste après un redémarrage, donc `diagnose` contrôle l'écoute sur ces ports. |
+| Le port RDP se change dans l'AdminTool (onglet Home, crayon « RDP Port »). | L'outil **lit** le port effectif dans `HKLM\SYSTEM\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp\PortNumber` et ne le change pas. |
+| Sessions → Permissions : « Allow access from Microsoft RDP client for everyone / Admins only / Deny » et « Deny access from Outside » (IP privées uniquement). | **Instructions manuelles affichées :** garder « Allow access from Microsoft RDP client for everyone », car on utilise mstsc. Activer « Deny access from Outside », qui ajoute une défense en profondeur puisque 10.77.0.0/24 est une plage privée. |
+| Activation de licence : `AdminTool.exe /activate <fichier .lic>` et `/vl /activate` pour les licences en volume. | **Jamais utilisé** (votre consigne). L'outil affiche la procédure : AdminTool → onglet License → « Activate your license ». |
+| 2FA TSplus : `TwoFactor.Admin.exe`. | Non utilisé. L'outil vérifie seulement qu'il n'est pas configuré (`TwoFactor.Admin.exe /getusers` renvoie une liste vide) et **avertit** dans le cas contraire, sans rien modifier. |
+| Portable Client Generator : verrouillage sur un nom de PC (onglet Security) et CLI `ClientGenerator.exe` (`-server`, `-user`, `-psw`…). | **Documenté dans le README uniquement** (option manuelle). La CLI ne documente **pas** d'option de verrouillage sur le nom de PC ; la procédure passe donc par l'interface graphique. Ne jamais passer `-psw` (mot de passe enregistré dans le client). |
 
-**Portable Client Generator :** documenté en option dans le README uniquement, avec un renvoi vers la documentation TSplus, sans chemin d'accès ni option inventés.
-
----
+### 5.2 Services TSplus
+**[À VÉRIFIER]** Les noms des services Windows de TSplus ne figurent pas dans les pages consultées. La recherche se fait par nom d'affichage contenant « TSplus », c'est une heuristique signalée comme telle. Le critère bloquant reste la présence d'`AdminTool.exe` et la réponse RDP en local.
 
 ## 6. Durcissement du serveur
 
@@ -459,10 +459,10 @@ L'activation refuse de continuer tant que **toutes** les conditions suivantes ne
 
 ---
 
-## 14. Questions pour vous
-1. **Nom :** « SecureDesk Deploy » ou « Sas » ?
-2. **.NET 10 au lieu de .NET 8**, en raison de la fin de support de .NET 8 le 10/11/2026 : d'accord ?
-3. **Documentation TSplus :** pouvez-vous autoriser `docs.tsplus.net` dans les domaines réseau de cet environnement cloud, ou me coller la page officielle sur l'installation silencieuse ? Sinon, l'installation TSplus reste guidée et manuelle.
-4. **Activation probatoire du 2FA**, avec désactivation automatique au bout de 20 min sans `confirm-2fa` : d'accord ?
-5. **Accès depuis le LAN :** désactivé par défaut ? Rappel : avec `1e`, une connexion RDP depuis le LAN compte comme distante et **exige donc le TOTP**. Seule l'ouverture de session physique à la console en est dispensée.
-6. **Config client en mode manuel :** êtes-vous d'accord pour la confier au service manager WireGuard (chiffrement DPAPI, activation via l'icône WireGuard) ?
+## 14. Décisions validées (30/10/2026)
+1. Nom : **SecureDesk**.
+2. **.NET 10 LTS**.
+3. Documentation TSplus consultée : voir le §5.
+4. **Activation probatoire du 2FA** : désactivation automatique au bout de 20 min sans `confirm-2fa`.
+5. **Accès LAN désactivé par défaut.**
+6. **Client en mode manuel** : configuration confiée au manager WireGuard (DPAPI).
