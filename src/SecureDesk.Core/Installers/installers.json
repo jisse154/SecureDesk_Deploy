@@ -20,7 +20,7 @@
     "version": "",
     "url": "",
     "sha256": "",
-    "signerSubjectContains": "",
-    "requireAuthenticode": false
+    "signerSubjectContains": "SysCo systemes de communication",
+    "requireAuthenticode": true
   }
 }

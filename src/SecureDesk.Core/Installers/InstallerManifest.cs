@@ -14,6 +14,8 @@ public sealed class InstallerEntry
     public string Sha256 { get; set; } = string.Empty;
 
     public string SignerSubjectContains { get; set; } = string.Empty;
+
+    /// <summary>Signature exigée sur le fichier exécuté (pour une archive zip : sur le MSI qu'elle contient).</summary>
     public bool RequireAuthenticode { get; set; }
 }
 
@@ -23,7 +25,7 @@ public sealed class InstallerManifest
     public InstallerEntry VcRedist { get; set; } = new();
     public InstallerEntry MultiOtp { get; set; } = new();
 
-    private static readonly JsonSerializerOptions Json = new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase, WriteIndented = true };
+    private static readonly JsonSerializerOptions Json = new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase, PropertyNameCaseInsensitive = true, WriteIndented = true };
 
     public static InstallerManifest FromJson(string json) =>
         JsonSerializer.Deserialize<InstallerManifest>(json, Json) ?? throw new FormatException("Manifeste des installeurs vide.");

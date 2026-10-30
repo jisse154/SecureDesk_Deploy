@@ -99,3 +99,25 @@ public class RdpAndConfigTests
         Assert.Empty(c.ValidateServer());
     }
 }
+
+public class InstallerManifestTests
+{
+    [Fact]
+    public void Manifeste_embarque_lu_correctement()
+    {
+        var m = SecureDesk.Core.Installers.InstallerManifest.Embedded();
+        Assert.Equal("WireGuard LLC", m.WireGuard.SignerSubjectContains);
+        Assert.True(m.WireGuard.RequireAuthenticode);
+        Assert.Contains("multiOTP", m.MultiOtp.DisplayName, StringComparison.Ordinal);
+        Assert.Contains("SysCo", m.MultiOtp.SignerSubjectContains, StringComparison.Ordinal);
+        Assert.StartsWith("https://", m.VcRedist.Url, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Manifeste_insensible_a_la_casse_des_cles()
+    {
+        var m = SecureDesk.Core.Installers.InstallerManifest.FromJson("{\"wireguard\":{\"sha256\":\"AB\"},\"MULTIOTP\":{\"version\":\"5\"}}");
+        Assert.Equal("AB", m.WireGuard.Sha256);
+        Assert.Equal("5", m.MultiOtp.Version);
+    }
+}

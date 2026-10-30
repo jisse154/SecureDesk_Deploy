@@ -39,8 +39,17 @@ public sealed class InstallerSource(ILog log, ProcessRunner runner)
             path = Download(entry);
         }
 
+        if (path.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
+        {
+            // Archive : empreinte épinglée obligatoire, puis signature exigée sur le MSI extrait.
+            VerifyHash(entry, path, overrideSha256, required: true);
+            var msi = ExtractMsi(entry, path);
+            VerifySignature(entry, msi, hashPinned: true);
+            return msi;
+        }
+
         Verify(entry, path, overrideSha256);
-        return path.EndsWith(".zip", StringComparison.OrdinalIgnoreCase) ? ExtractMsi(entry, path) : path;
+        return path;
     }
 
     /// <summary>
@@ -68,6 +77,12 @@ public sealed class InstallerSource(ILog log, ProcessRunner runner)
     public void Verify(InstallerEntry entry, string path, string? overrideSha256 = null)
     {
         ArgumentNullException.ThrowIfNull(entry);
+        var hashPinned = VerifyHash(entry, path, overrideSha256, required: false);
+        VerifySignature(entry, path, hashPinned);
+    }
+
+    private bool VerifyHash(InstallerEntry entry, string path, string? overrideSha256, bool required)
+    {
         var expected = !string.IsNullOrWhiteSpace(overrideSha256) ? overrideSha256 : entry.Sha256;
         var actual = FileHash.Sha256Hex(path);
         log.Info($"{entry.DisplayName} : empreinte sha256:{actual}");
@@ -77,6 +92,16 @@ public sealed class InstallerSource(ILog log, ProcessRunner runner)
             throw new InstallerVerificationException($"{entry.DisplayName} : empreinte SHA-256 inattendue. Fichier refusé (attendu sha256:{expected}).");
         }
 
+        if (required && !hashPinned)
+        {
+            throw new InstallerVerificationException($"{entry.DisplayName} : archive sans empreinte épinglée. Indiquez l'empreinte SHA-256 publiée par l'éditeur (--sha256), ou fournissez directement le MSI.");
+        }
+
+        return hashPinned;
+    }
+
+    private void VerifySignature(InstallerEntry entry, string path, bool hashPinned)
+    {
         var signed = Authenticode.IsTrusted(path, entry.SignerSubjectContains, out var sig);
         log.Info($"{entry.DisplayName} : {sig}");
         if (entry.RequireAuthenticode && !signed)

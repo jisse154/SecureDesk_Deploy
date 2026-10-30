@@ -1,0 +1,77 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*.*.*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag à publier (ex. v1.0.0)"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Publication de l'exécutable
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+      - name: Version
+        id: version
+        shell: pwsh
+        run: |
+          $tag = if ("${{ github.event_name }}" -eq "workflow_dispatch") { "${{ inputs.tag }}" } else { "${{ github.ref_name }}" }
+          if ($tag -notmatch '^v(\d+\.\d+\.\d+)$') { throw "Tag invalide : $tag" }
+          "tag=$tag" >> $env:GITHUB_OUTPUT
+          "version=$($Matches[1])" >> $env:GITHUB_OUTPUT
+      - name: Épinglage des installeurs officiels
+        shell: pwsh
+        run: ./scripts/pin-installers.ps1
+      - name: Tests
+        run: dotnet test tests/SecureDesk.Core.Tests -c Release
+      - name: Publication (self-contained, single-file, win-x64)
+        run: dotnet publish src/SecureDesk.App -c Release -o publish -p:Version=${{ steps.version.outputs.version }}
+      - name: Signature Authenticode (si un certificat est configuré)
+        shell: pwsh
+        env:
+          SIGNING_CERT_PFX_BASE64: ${{ secrets.SIGNING_CERT_PFX_BASE64 }}
+          SIGNING_CERT_PASSWORD: ${{ secrets.SIGNING_CERT_PASSWORD }}
+        run: |
+          if (-not $env:SIGNING_CERT_PFX_BASE64) {
+            Write-Warning "Aucun certificat de signature : l'exécutable n'est PAS signé (avertissement SmartScreen, voir README)."
+            exit 0
+          }
+          $pfx = Join-Path $env:RUNNER_TEMP 'sign.pfx'
+          [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:SIGNING_CERT_PFX_BASE64))
+          try {
+            $signtool = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin" -Recurse -Filter signtool.exe | Where-Object FullName -like '*x64*' | Select-Object -Last 1
+            & $signtool.FullName sign /fd SHA256 /td SHA256 /tr http://timestamp.digicert.com /f $pfx /p $env:SIGNING_CERT_PASSWORD publish/SecureDesk.exe
+            if ($LASTEXITCODE -ne 0) { throw "signtool a échoué" }
+            & $signtool.FullName verify /pa publish/SecureDesk.exe
+          } finally {
+            Remove-Item $pfx -Force
+          }
+      - name: Empreintes SHA256SUMS
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force dist | Out-Null
+          Copy-Item publish/SecureDesk.exe dist/SecureDesk.exe
+          Copy-Item securedesk.example.json dist/
+          Copy-Item src/SecureDesk.Core/Installers/installers.json dist/installers-pinned.json
+          Push-Location dist
+          Get-ChildItem -File | Sort-Object Name | ForEach-Object { "{0}  {1}" -f (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant(), $_.Name } | Set-Content -Encoding ascii SHA256SUMS
+          Get-Content SHA256SUMS
+          Pop-Location
+      - name: Release GitHub
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: pwsh
+        run: |
+          $tag = "${{ steps.version.outputs.tag }}"
+          $notes = "SecureDesk $tag`n`nVérifiez l'empreinte : ``Get-FileHash SecureDesk.exe -Algorithm SHA256`` doit correspondre à SHA256SUMS.`nVoir README.md (procédure) et docs/RECETTE.md (tests à faire sur vos PC)."
+          gh release create $tag dist/* --title "SecureDesk $tag" --notes $notes --verify-tag

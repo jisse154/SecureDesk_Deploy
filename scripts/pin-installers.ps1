@@ -62,9 +62,9 @@ try {
     if ($mFile -like '*.zip') {
         $x = Join-Path $WorkDir 'multiotp'
         Expand-Archive -Path $mFile -DestinationPath $x -Force
-        Get-ChildItem $x -Recurse -Filter *.msi | ForEach-Object { Write-Host "  MSI : $($_.Name)"; Test-Signer $_.FullName '' | Out-Null }
+        Get-ChildItem $x -Recurse -Filter *.msi | ForEach-Object { Write-Host "  MSI : $($_.Name)"; Test-Signer $_.FullName $json.multiotp.signerSubjectContains | Out-Null }
     } else {
-        Test-Signer $mFile '' | Out-Null
+        Test-Signer $mFile $json.multiotp.signerSubjectContains | Out-Null
     }
 } catch {
     Write-Warning "multiOTP non épinglé automatiquement : $($_.Exception.Message). L'installation exigera un MSI local et son empreinte (--multiotp-msi, --sha256)."
