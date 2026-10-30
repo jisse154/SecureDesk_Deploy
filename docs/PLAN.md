@@ -255,7 +255,7 @@ Sources consultées **[VÉRIFIÉ]** : `multiOTP/multiOTPCredentialProvider` (REA
   ```
 - **Mode local uniquement :** dans l'installeur, c'est la case `MULTIOTP_LOCALSERVERONLY` (« No remote server, local multiOTP only ») qui n'a qu'un rôle de validation dans l'interface. L'effet réel est `multiOTPServers` vide. Ma lecture des sources, à confirmer en recette : avec une URL vide, l'exécutable `multiotp.exe` embarqué authentifie localement.
 - **`CPUS_*=3d` à l'installation :** la valeur `3` est documentée comme « multiOTP Credential Provider completely disabled ». C'est aussi la valeur par défaut du MSI. **Le CP est donc installé mais inactif** tant que l'enrôlement n'est pas validé. C'est la pierre angulaire de l'anti-verrouillage.
-- **Intégrité :** le README indique que « DLL and EXE files are digitally signed », mais ne dit rien de la signature du **MSI** [À VÉRIFIER]. Je vérifie donc :
+- **Intégrité :** le README indique que « DLL and EXE files are digitally signed », mais ne dit rien de la signature du **MSI** [À VÉRIFIER]. Je vérifie donc (MSI signé par SysCo : vérifié en CI, voir §15) :
   - le **SHA-256 épinglé** du MSI avant installation ;
   - la **signature Authenticode** de `multiOTPCredentialProvider.dll` et de `multiotp.exe` après installation, **avant** toute activation.
   Si la signature est invalide, l'outil désinstalle et s'arrête.
@@ -466,3 +466,25 @@ L'activation refuse de continuer tant que **toutes** les conditions suivantes ne
 4. **Activation probatoire du 2FA** : désactivation automatique au bout de 20 min sans `confirm-2fa`.
 5. **Accès LAN désactivé par défaut.**
 6. **Client en mode manuel** : configuration confiée au manager WireGuard (DPAPI).
+
+## 15. Constats vérifiés en CI (runner Windows Server 2025, build 26100)
+
+| Point du plan | Résultat |
+|---|---|
+| WireGuard : MSI signé « WireGuard LLC », `DO_NOT_LAUNCH=1`, `/installtunnelservice` | **Vérifié.** Version 1.1.1 épinglée. Le service démarre de lui-même après `/installtunnelservice`, et l'outil en tient compte. |
+| Handshake réel serveur ↔ client (deux tunnels sur la même machine) | **Vérifié** (`init` → `join` → `add-peer`, handshake en moins de 5 s). |
+| Pare-feu COM : règles allow/block, relecture conforme, idempotence, suppression | **Vérifié.** |
+| multiOTP CP 5.10.2.2 : archive officielle épinglée, **MSI signé « SysCo systemes de communication sa »** | **Vérifié.** Le MSI est signé, ce qui lève le point [À VÉRIFIER] du §7.1. La signature est désormais exigée. |
+| Installation silencieuse multiOTP désactivée (`CPUS_*=3d`), valeurs de registre relues | **Vérifié.** |
+| CLI multiotp : `-fastcreatenopin`, `-urllink` (URI sur stdout), `<user> <code>` = 0, rejeu refusé, `-scratchlist` | **Vérifié**, sans fichier QR résiduel. |
+| `msiexec` et les propriétés vides | **Piège corrigé.** `ArgumentList` produit `PROP=\"\"`, que msiexec ne comprend pas : il reste bloqué sur sa fenêtre d'aide invisible. La ligne msiexec est donc construite selon la syntaxe Windows, avec des propriétés validées. |
+| MSI multiOTP et VBScript | L'action personnalisée `cleanIntegerValues` est en VBScript (`Product.wxs`). La présence de `vbscript.dll` est vérifiée avant l'installation. |
+| Rollback complet (stratégies RDP, secedit, audit, journaux, comptes, WireGuard) | **Vérifié** : valeurs identiques avant et après. |
+| Aucun secret (clés privées, PSK, phrases de passe, mots de passe) dans les journaux, le rapport ou les fichiers d'appairage | **Vérifié** sur les vraies clés générées. |
+
+**Restent à vérifier sur les vrais PC (voir RECETTE) :**
+- l'activation réelle du Credential Provider (`1e`) ;
+- la combinaison NLA + TSplus + multiOTP ;
+- le mode sans échec ;
+- les sessions simultanées TSplus ;
+- l'exposition vue d'Internet.

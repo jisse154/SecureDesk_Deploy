@@ -52,6 +52,7 @@ Chaque connexion franchit trois protections successives :
 | Téléphone | Application TOTP standard : Google Authenticator, Microsoft Authenticator, Aegis… |
 | Clé USB | Pour transporter les fichiers d'appairage. |
 | Accès console | Vous devez pouvoir vous asseoir devant le PC serveur pour l'étape 2FA. |
+| Fonctionnalité Windows **VBScript** (PC serveur) | Le MSI multiOTP exécute une action personnalisée VBScript. Elle est présente par défaut sur Windows 11 24H2 (Paramètres → Système → Fonctionnalités facultatives). Microsoft prévoit de la retirer progressivement : SecureDesk vérifie sa présence avant d'installer multiOTP. |
 | **BitLocker (fortement recommandé)** | Sur les deux PC. Conservez les clés de récupération **hors** des PC. |
 
 Sans accès Internet, prévoyez aussi les installeurs officiels (mode hors ligne) :
