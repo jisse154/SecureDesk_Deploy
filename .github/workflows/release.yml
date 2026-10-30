@@ -3,6 +3,8 @@ name: Release
 on:
   push:
     tags: ["v*.*.*"]
+    # Un commit dont le message commence par « release: vX.Y.Z » publie aussi la release (tag créé sur ce commit).
+    branches: ["**"]
   workflow_dispatch:
     inputs:
       tag:
@@ -16,6 +18,7 @@ jobs:
   release:
     name: Publication de l'exécutable
     runs-on: windows-latest
+    if: github.event_name != 'push' || startsWith(github.ref, 'refs/tags/') || startsWith(github.event.head_commit.message, 'release: v')
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-dotnet@v5
@@ -24,8 +27,12 @@ jobs:
       - name: Version
         id: version
         shell: pwsh
+        env:
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
         run: |
-          $tag = if ("${{ github.event_name }}" -eq "workflow_dispatch") { "${{ inputs.tag }}" } else { "${{ github.ref_name }}" }
+          $tag = if ("${{ github.event_name }}" -eq "workflow_dispatch") { "${{ inputs.tag }}" }
+                 elseif ("${{ github.ref }}" -like "refs/tags/*") { "${{ github.ref_name }}" }
+                 else { ($env:COMMIT_MESSAGE -split "`n")[0] -replace '^release:\s*', '' }
           if ($tag -notmatch '^v(\d+\.\d+\.\d+)$') { throw "Tag invalide : $tag" }
           "tag=$tag" >> $env:GITHUB_OUTPUT
           "version=$($Matches[1])" >> $env:GITHUB_OUTPUT
@@ -74,8 +81,8 @@ jobs:
         run: |
           $tag = "${{ steps.version.outputs.tag }}"
           $notes = "SecureDesk $tag`n`nVérifiez l'empreinte : ``Get-FileHash SecureDesk.exe -Algorithm SHA256`` doit correspondre à SHA256SUMS.`nVoir README.md (procédure) et docs/RECETTE.md (tests à faire sur vos PC)."
-          if ("${{ github.event_name }}" -eq "workflow_dispatch") {
-            # Déclenchement manuel : le tag est créé sur le commit testé par ce workflow.
+          if ("${{ github.ref }}" -notlike "refs/tags/*") {
+            # Déclenchement manuel ou par commit « release: » : le tag est créé sur le commit testé par ce workflow.
             gh release create $tag dist/* --title "SecureDesk $tag" --notes $notes --target "${{ github.sha }}"
           } else {
             gh release create $tag dist/* --title "SecureDesk $tag" --notes $notes --verify-tag
