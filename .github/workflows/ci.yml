@@ -13,8 +13,8 @@ jobs:
     name: Tests Core (Linux)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v5
         with:
           global-json-file: global.json
       - name: Tests unitaires Core
@@ -24,8 +24,8 @@ jobs:
     name: Build, analyse et tests (Windows)
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v5
         with:
           global-json-file: global.json
       - name: Restauration
