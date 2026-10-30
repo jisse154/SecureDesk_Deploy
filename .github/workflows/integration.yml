@@ -23,11 +23,10 @@ jobs:
         run: ./scripts/pin-installers.ps1
       - name: Build
         run: dotnet build SecureDesk.slnx -c Release
-      - name: Tests d'intégration (pare-feu, ACL, stratégies, Authenticode, multiOTP désactivé)
+      - name: Tests d'intégration (pare-feu, ACL, stratégies, Authenticode)
         timeout-minutes: 15
         env:
           SECUREDESK_INTEGRATION: "1"
-          SECUREDESK_IT_MULTIOTP: "1"
         run: dotnet test tests/SecureDesk.Windows.IntegrationTests -c Release --no-build --logger "console;verbosity=normal"
       - name: Publication de l'exécutable
         run: dotnet publish src/SecureDesk.App -c Release -o publish
@@ -40,3 +39,36 @@ jobs:
         shell: pwsh
         run: |
           Get-ChildItem "$env:RUNNER_TEMP/sd-e2e", "$env:ProgramData/SecureDesk" -Recurse -Filter *.log -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "== $($_.FullName)"; Get-Content $_.FullName -Tail 150 }
+
+  multiotp:
+    name: multiOTP (installé DÉSACTIVÉ, enrôlement CLI)
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+      - name: Épinglage des installeurs officiels
+        shell: pwsh
+        run: ./scripts/pin-installers.ps1
+      - name: État de VBScript (requis par une action personnalisée du MSI multiOTP)
+        shell: pwsh
+        run: |
+          Write-Host "vbscript.dll : $(Test-Path "$env:WINDIR\System32\vbscript.dll")"
+          Get-WindowsCapability -Online -Name 'VBSCRIPT*' -ErrorAction SilentlyContinue | Format-Table Name, State
+      - name: Build
+        run: dotnet build tests/SecureDesk.Windows.IntegrationTests -c Release
+      - name: Test multiOTP
+        timeout-minutes: 15
+        env:
+          SECUREDESK_INTEGRATION: "1"
+          SECUREDESK_IT_MULTIOTP: "1"
+        run: dotnet test tests/SecureDesk.Windows.IntegrationTests -c Release --no-build --filter "FullyQualifiedName~MultiOtp" --logger "console;verbosity=detailed"
+      - name: Journal MSI (en cas d'échec)
+        if: failure()
+        shell: pwsh
+        run: |
+          Get-ChildItem "$env:ProgramData\SecureDesk\logs" -Force -ErrorAction SilentlyContinue | Format-Table Name, Length
+          $log = "$env:ProgramData\SecureDesk\logs\multiotp-install.log"
+          if (Test-Path $log) { Get-Content $log -Encoding Unicode -Tail 120 } else { Write-Host "Journal MSI absent" }

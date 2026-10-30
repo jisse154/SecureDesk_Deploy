@@ -145,7 +145,7 @@ public sealed class InstallerSource(ILog log, ProcessRunner runner)
     }
 
     /// <summary>msiexec /i silencieux. 3010 = succès, redémarrage requis.</summary>
-    public bool InstallMsi(string msiPath, IEnumerable<string> properties, string logName)
+    public bool InstallMsi(string msiPath, IEnumerable<string> properties, string logName, TimeSpan? timeout = null)
     {
         ArgumentNullException.ThrowIfNull(properties);
         SecureFiles.EnsureProtectedDirectory(SecureFiles.LogsDir);
@@ -154,7 +154,7 @@ public sealed class InstallerSource(ILog log, ProcessRunner runner)
         args.AddRange(properties);
         args.Add("/l*v");
         args.Add(msiLog);
-        var r = runner.RunChecked(ProcessRunner.SystemExe("msiexec.exe"), args, timeout: TimeSpan.FromMinutes(15), okCodes: [0, 3010, 1641]);
+        var r = runner.RunChecked(ProcessRunner.SystemExe("msiexec.exe"), args, timeout: timeout ?? TimeSpan.FromMinutes(15), okCodes: [0, 3010, 1641]);
         if (r.ExitCode != 0)
         {
             log.Warn("L'installation demande un redémarrage de Windows.");

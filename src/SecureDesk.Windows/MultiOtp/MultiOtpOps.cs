@@ -69,8 +69,15 @@ public sealed class MultiOtpOps(ILog log, ProcessRunner runner)
             log.Info("Visual C++ Redistributable 2015-2022 x64 installé.");
         }
 
+        if (!VbScriptAvailable())
+        {
+            throw new InvalidOperationException(
+                "Le MSI multiOTP exécute une action personnalisée VBScript (cleanIntegerValues, Product.wxs) : la fonctionnalité Windows « VBScript » est absente. " +
+                "Activez-la (Paramètres → Système → Fonctionnalités facultatives → VBScript) puis relancez install-2fa.");
+        }
+
         var msi = source.Acquire(manifest.MultiOtp, localMsi, msiSha256);
-        source.InstallMsi(msi, MultiOtpPlan.MsiProperties(), "multiotp-install.log");
+        source.InstallMsi(msi, MultiOtpPlan.MsiProperties(), "multiotp-install.log", TimeSpan.FromMinutes(10));
         VerifyInstalled();
     }
 
@@ -111,6 +118,9 @@ public sealed class MultiOtpOps(ILog log, ProcessRunner runner)
         HardenFolders();
         log.Info("multiOTP Credential Provider installé et vérifié (INACTIF tant que enable-2fa n'a pas réussi).");
     }
+
+    /// <summary>VBScript est une fonctionnalité Windows facultative en cours de dépréciation (Microsoft) : on vérifie sa présence.</summary>
+    public static bool VbScriptAvailable() => File.Exists(ProcessRunner.SystemExe("vbscript.dll"));
 
     public static bool VcRedistInstalled()
     {
