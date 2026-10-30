@@ -504,7 +504,8 @@ public sealed class ServerOps(Context ctx)
             () => policies.ConfigureTimeSync(cfg.NtpServer, ctx.State)));
         ctx.Run(steps);
 
-        if (RegistryOps.ReadDword(HardeningPlan.TsPolicyPath, HardeningPlan.PromptForPasswordValue) == 1)
+        if (RegistryOps.ReadDword(HardeningPlan.TsPolicyPath, HardeningPlan.PromptForPasswordValue) == 1
+            || RegistryOps.ReadDword(HardeningPlan.RdpTcpPath, HardeningPlan.PromptForPasswordValue) == 1)
         {
             ctx.Ui.Warn("La stratégie « Toujours demander le mot de passe à la connexion » (fPromptForPassword) est active : elle provoque une double saisie avec NLA et multiOTP. Elle n'est pas modifiée par SecureDesk (voir RECETTE).");
         }

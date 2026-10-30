@@ -81,6 +81,12 @@ public static class Diagnostics
             items.Add(new("NLA", CheckLevel.Warning, "stratégie NLA non imposée (lancez harden)"));
         }
 
+        if (RegistryOps.ReadDword(HardeningPlan.TsPolicyPath, HardeningPlan.PromptForPasswordValue) == 1
+            || RegistryOps.ReadDword(HardeningPlan.RdpTcpPath, HardeningPlan.PromptForPasswordValue) == 1)
+        {
+            items.Add(new("Invite de mot de passe", CheckLevel.Warning, "fPromptForPassword = 1 (TSplus ou stratégie) : le mot de passe peut être redemandé après NLA (voir RECETTE R-2FA-4)"));
+        }
+
         items.AddRange(TwoFactor(ctx));
         items.Add(Checks.Clock(ctx.Config.Server.NtpServer));
         items.Add(Checks.BitLocker());

@@ -135,7 +135,7 @@ PersistentKeepalive = 25
 | Protection | **chiffré** : AES-256-GCM, clé dérivée de la phrase de passe par PBKDF2-HMAC-SHA256 (600 000 itérations, sel aléatoire de 16 octets). L'en-tête en clair (version, type, paramètres KDF) est authentifié comme AAD. | en clair (aucun secret), mais **authentifié** par HMAC-SHA256 avec une clé dérivée de la PSK (HKDF, info `sdpair-client-v1`). Le serveur rejette donc un fichier client falsifié ou destiné à une autre invitation. |
 | Clé privée | **jamais** | **jamais** |
 
-- **Phrase de passe :** 14 caractères minimum, avec un contrôle d'entropie. L'assistant propose une phrase générée (6 mots d'une liste française embarquée). Elle est saisie deux fois et n'est jamais journalisée.
+- **Phrase de passe :** 14 caractères minimum, avec un contrôle de répétition. L'assistant propose une phrase générée de 6 groupes de 4 caractères sans ambiguïté (ex. `K7QM-2XRP-…`, environ 118 bits), facile à dicter. Elle est saisie deux fois et n'est jamais journalisée.
 - **Empreinte affichée :** chaque côté affiche une empreinte courte (8 groupes hexadécimaux) des clés publiques, à comparer à voix haute ou visuellement.
 - **Après export :** l'outil recommande la clé USB, puis propose la **suppression du fichier** des deux côtés. Sur un SSD, l'écrasement n'est pas garanti, ce que l'outil signale. La PSK étant de toute façon chiffrée dans le fichier, le risque résiduel est faible.
 - **Expiration :** une invitation expire au bout de 7 jours par défaut, ce que l'outil contrôle à l'import.
