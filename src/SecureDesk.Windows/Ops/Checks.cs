@@ -110,8 +110,8 @@ public static class Checks
             var offset = Sntp.MeasureOffsetAsync(ntpServer, TimeSpan.FromSeconds(5)).GetAwaiter().GetResult();
             var seconds = Math.Abs(offset.TotalSeconds);
             return seconds > Sntp.MaxAllowedDrift.TotalSeconds
-                ? new("Horloge", CheckLevel.Blocking, string.Create(CultureInfo.InvariantCulture, $"dérive de {offset.TotalSeconds:+0.0;-0.0} s par rapport à {ntpServer} (> 30 s) : les codes TOTP seraient refusés"))
-                : new("Horloge", CheckLevel.Ok, string.Create(CultureInfo.InvariantCulture, $"dérive {offset.TotalSeconds:+0.00;-0.00} s par rapport à {ntpServer}"));
+                ? new("Horloge", CheckLevel.Blocking, string.Create(CultureInfo.InvariantCulture, $"dérive de {offset.TotalSeconds:+0.0;-0.0;0.0} s par rapport à {ntpServer} (> 30 s) : les codes TOTP seraient refusés"))
+                : new("Horloge", CheckLevel.Ok, string.Create(CultureInfo.InvariantCulture, $"dérive {Math.Round(offset.TotalSeconds, 2) + 0.0:+0.00;-0.00;0.00} s par rapport à {ntpServer}"));
         }
 #pragma warning disable CA1031 // Toute erreur réseau devient un avertissement lisible.
         catch (Exception ex)

@@ -24,7 +24,7 @@ public sealed class Uninstaller(Context ctx)
             plan.Add(st.Rollback.Any(r => r.Key == "installed:multiotp") ? "Désactiver puis désinstaller multiOTP Credential Provider" : "Désactiver multiOTP (installé hors SecureDesk : non désinstallé)");
         }
 
-        var tunnel = st.Server?.TunnelName ?? st.Client?.TunnelName ?? ctx.Config.Server.TunnelName;
+        var tunnel = new[] { st.Server?.TunnelName, st.Client?.TunnelName, ctx.Config.Server.TunnelName }.First(t => !string.IsNullOrWhiteSpace(t))!;
         plan.Add($"Supprimer le tunnel WireGuard « {tunnel} » et sa configuration");
         plan.Add("Supprimer les règles de pare-feu « SecureDesk-* »");
         plan.AddRange(st.Rollback.AsEnumerable().Reverse().Where(r => r.Kind != "account-created" || removeAccounts).Select(Describe).Where(d => d is not null)!);

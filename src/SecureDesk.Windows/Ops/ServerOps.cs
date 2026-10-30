@@ -21,9 +21,12 @@ public sealed class ServerOps(Context ctx)
     private readonly WireGuardOps _wg = new(ctx.Log, ctx.Runner);
     private readonly FirewallOps _fw = new(ctx.Log, ctx.Runner);
 
-    private string Tunnel => ctx.State.Server?.TunnelName ?? ctx.Config.Server.TunnelName;
+    // L'état déployé prime sur la configuration, sauf s'il n'est pas encore renseigné (serveur neuf).
+    private string Tunnel => NonEmpty(ctx.State.Server?.TunnelName) ?? ctx.Config.Server.TunnelName;
 
-    private Ipv4Cidr Subnet => Ipv4Cidr.Parse(ctx.State.Server?.TunnelSubnet ?? ctx.Config.Server.TunnelSubnet);
+    private Ipv4Cidr Subnet => Ipv4Cidr.Parse(NonEmpty(ctx.State.Server?.TunnelSubnet) ?? ctx.Config.Server.TunnelSubnet);
+
+    private static string? NonEmpty(string? s) => string.IsNullOrWhiteSpace(s) ? null : s;
 
     private ServerState S => ctx.State.Server ??= new ServerState();
 

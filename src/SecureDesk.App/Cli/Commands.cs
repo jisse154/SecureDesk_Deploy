@@ -58,7 +58,9 @@ internal static class Commands
             Dispatch(cl, ctx, ui);
             return 0;
         }
-        catch (Exception ex) when (ex is OperationException or PairingException or CommandLineException or InstallerVerificationException or FileNotFoundException or ProcessFailedException or InvalidOperationException or UnauthorizedAccessException)
+#pragma warning disable CA1031 // Toute erreur est présentée proprement et journalisée (détail technique dans le journal).
+        catch (Exception ex)
+#pragma warning restore CA1031
         {
             log.Error(ex.Message);
             log.Debug(ex.ToString());

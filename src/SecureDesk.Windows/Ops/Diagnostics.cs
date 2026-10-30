@@ -21,7 +21,7 @@ public static class Diagnostics
         ArgumentNullException.ThrowIfNull(ctx);
         var items = new List<CheckItem>();
         var s = ctx.State.Server;
-        if (s is null)
+        if (s is null || string.IsNullOrEmpty(s.ServerPublicKey) || string.IsNullOrEmpty(s.TunnelSubnet))
         {
             items.Add(new("Serveur", CheckLevel.Warning, "non initialisé (init)"));
             return items;
