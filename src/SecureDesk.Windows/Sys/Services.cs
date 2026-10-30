@@ -34,21 +34,32 @@ public static class Services
     public static void Start(string name, TimeSpan? timeout = null)
     {
         using var s = Find(name) ?? throw new InvalidOperationException($"Service introuvable : {name}");
-        if (s.Status != ServiceControllerStatus.Running)
+        s.Refresh();
+        if (s.Status is ServiceControllerStatus.Stopped or ServiceControllerStatus.Paused)
         {
-            s.Start();
-            s.WaitForStatus(ServiceControllerStatus.Running, timeout ?? TimeSpan.FromSeconds(60));
+            try
+            {
+                s.Start();
+            }
+            catch (InvalidOperationException ex) when (ex.InnerException is System.ComponentModel.Win32Exception { NativeErrorCode: 1056 })
+            {
+                // ERROR_SERVICE_ALREADY_RUNNING : démarré entre-temps (wireguard /installtunnelservice démarre le service).
+            }
         }
+
+        s.WaitForStatus(ServiceControllerStatus.Running, timeout ?? TimeSpan.FromSeconds(60));
     }
 
     public static void Stop(string name, TimeSpan? timeout = null)
     {
         using var s = Find(name);
-        if (s is not null && s.Status != ServiceControllerStatus.Stopped)
+        s?.Refresh();
+        if (s is not null && s.Status is ServiceControllerStatus.Running or ServiceControllerStatus.Paused)
         {
             s.Stop();
-            s.WaitForStatus(ServiceControllerStatus.Stopped, timeout ?? TimeSpan.FromSeconds(60));
         }
+
+        s?.WaitForStatus(ServiceControllerStatus.Stopped, timeout ?? TimeSpan.FromSeconds(60));
     }
 
     public static void Restart(string name)
