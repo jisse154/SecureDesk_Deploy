@@ -23,7 +23,18 @@ public sealed class ProcessRunner(ILog log)
     public ProcessResult Run(string fileName, IEnumerable<string> args, string? stdin = null, TimeSpan? timeout = null, bool sensitiveArgs = false, bool logOutput = true)
     {
         ArgumentNullException.ThrowIfNull(args);
-        var argList = args.ToList();
+        return Start(fileName, args.ToList(), null, stdin, timeout, sensitiveArgs, logOutput);
+    }
+
+    /// <summary>
+    /// Ligne de commande brute : réservée à msiexec, qui n'accepte pas l'échappement C (\") produit par ArgumentList
+    /// pour PROPRIETE="" (il ouvre alors une fenêtre d'aide invisible et reste bloqué). Les valeurs sont validées par l'appelant.
+    /// </summary>
+    public ProcessResult RunRaw(string fileName, string rawArguments, TimeSpan? timeout = null) =>
+        Start(fileName, [], rawArguments, null, timeout, sensitiveArgs: false, logOutput: true);
+
+    private ProcessResult Start(string fileName, List<string> argList, string? rawArguments, string? stdin, TimeSpan? timeout, bool sensitiveArgs, bool logOutput)
+    {
         var psi = new ProcessStartInfo(fileName)
         {
             UseShellExecute = false,
@@ -34,12 +45,17 @@ public sealed class ProcessRunner(ILog log)
             StandardOutputEncoding = Encoding.UTF8,
             StandardErrorEncoding = Encoding.UTF8,
         };
+        if (rawArguments is not null)
+        {
+            psi.Arguments = rawArguments;
+        }
+
         foreach (var a in argList)
         {
             psi.ArgumentList.Add(a);
         }
 
-        var shown = sensitiveArgs ? "(arguments masqués)" : string.Join(' ', argList.Select(Quote));
+        var shown = sensitiveArgs ? "(arguments masqués)" : rawArguments ?? string.Join(' ', argList.Select(Quote));
         log.Debug($"Exécution : {Path.GetFileName(fileName)} {shown}");
         using var p = Process.Start(psi) ?? throw new ProcessFailedException($"Impossible de lancer {fileName}.");
         var stdout = new StringBuilder();
@@ -91,9 +107,14 @@ public sealed class ProcessRunner(ILog log)
         return result;
     }
 
-    public ProcessResult RunChecked(string fileName, IEnumerable<string> args, string? stdin = null, TimeSpan? timeout = null, bool sensitiveArgs = false, params int[] okCodes)
+    public ProcessResult RunChecked(string fileName, IEnumerable<string> args, string? stdin = null, TimeSpan? timeout = null, bool sensitiveArgs = false, params int[] okCodes) =>
+        Check(fileName, Run(fileName, args, stdin, timeout, sensitiveArgs), okCodes);
+
+    public ProcessResult RunRawChecked(string fileName, string rawArguments, TimeSpan? timeout = null, params int[] okCodes) =>
+        Check(fileName, RunRaw(fileName, rawArguments, timeout), okCodes);
+
+    private static ProcessResult Check(string fileName, ProcessResult r, int[] okCodes)
     {
-        var r = Run(fileName, args, stdin, timeout, sensitiveArgs);
         var accepted = okCodes is { Length: > 0 } ? okCodes : [0];
         if (!accepted.Contains(r.ExitCode))
         {

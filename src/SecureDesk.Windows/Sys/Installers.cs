@@ -150,11 +150,8 @@ public sealed class InstallerSource(ILog log, ProcessRunner runner)
         ArgumentNullException.ThrowIfNull(properties);
         SecureFiles.EnsureProtectedDirectory(SecureFiles.LogsDir);
         var msiLog = Path.Combine(SecureFiles.LogsDir, logName);
-        var args = new List<string> { "/i", msiPath, "/qn", "/norestart" };
-        args.AddRange(properties);
-        args.Add("/l*v");
-        args.Add(msiLog);
-        var r = runner.RunChecked(ProcessRunner.SystemExe("msiexec.exe"), args, timeout: timeout ?? TimeSpan.FromMinutes(15), okCodes: [0, 3010, 1641]);
+        var args = MsiCommandLine("/i", msiPath, properties, msiLog);
+        var r = runner.RunRawChecked(ProcessRunner.SystemExe("msiexec.exe"), args, timeout ?? TimeSpan.FromMinutes(15), 0, 3010, 1641);
         if (r.ExitCode != 0)
         {
             log.Warn("L'installation demande un redémarrage de Windows.");
@@ -163,11 +160,37 @@ public sealed class InstallerSource(ILog log, ProcessRunner runner)
         return r.ExitCode != 0;
     }
 
+    /// <summary>Construit la ligne msiexec avec la syntaxe Windows (PROPRIETE="valeur"), après validation stricte.</summary>
+    internal static string MsiCommandLine(string action, string target, IEnumerable<string> properties, string logPath)
+    {
+        static string Q(string p) => p.Contains('"', StringComparison.Ordinal)
+            ? throw new ArgumentException("Chemin invalide (guillemet).")
+            : "\"" + p + "\"";
+        var sb = new System.Text.StringBuilder();
+        sb.Append(action).Append(' ').Append(Q(target)).Append(" /qn /norestart");
+        foreach (var prop in properties)
+        {
+            if (!System.Text.RegularExpressions.Regex.IsMatch(prop, "^[A-Z][A-Z0-9_]*=(\"\"|[A-Za-z0-9_.:/-]*)$"))
+            {
+                throw new ArgumentException($"Propriété MSI refusée : {prop}");
+            }
+
+            sb.Append(' ').Append(prop);
+        }
+
+        sb.Append(" /l*v ").Append(Q(logPath));
+        return sb.ToString();
+    }
+
     public void UninstallMsiByProductCode(string productCode, string logName)
     {
         SecureFiles.EnsureProtectedDirectory(SecureFiles.LogsDir);
         var msiLog = Path.Combine(SecureFiles.LogsDir, logName);
-        runner.RunChecked(ProcessRunner.SystemExe("msiexec.exe"), ["/x", productCode, "/qn", "/norestart", "/l*v", msiLog],
-            timeout: TimeSpan.FromMinutes(15), okCodes: [0, 3010, 1605, 1641]);
+        if (!System.Text.RegularExpressions.Regex.IsMatch(productCode, "^\\{[0-9A-Fa-f-]{36}\\}$"))
+        {
+            throw new ArgumentException("Code produit MSI invalide.");
+        }
+
+        runner.RunRawChecked(ProcessRunner.SystemExe("msiexec.exe"), MsiCommandLine("/x", productCode, [], msiLog), TimeSpan.FromMinutes(15), 0, 3010, 1605, 1641);
     }
 }
