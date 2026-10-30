@@ -74,4 +74,9 @@ jobs:
         run: |
           $tag = "${{ steps.version.outputs.tag }}"
           $notes = "SecureDesk $tag`n`nVérifiez l'empreinte : ``Get-FileHash SecureDesk.exe -Algorithm SHA256`` doit correspondre à SHA256SUMS.`nVoir README.md (procédure) et docs/RECETTE.md (tests à faire sur vos PC)."
-          gh release create $tag dist/* --title "SecureDesk $tag" --notes $notes --verify-tag
+          if ("${{ github.event_name }}" -eq "workflow_dispatch") {
+            # Déclenchement manuel : le tag est créé sur le commit testé par ce workflow.
+            gh release create $tag dist/* --title "SecureDesk $tag" --notes $notes --target "${{ github.sha }}"
+          } else {
+            gh release create $tag dist/* --title "SecureDesk $tag" --notes $notes --verify-tag
+          }
