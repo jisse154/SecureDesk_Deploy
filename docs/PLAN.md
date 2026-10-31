@@ -3,6 +3,7 @@
 > Statut : **validé le 30/10/2026** (voir le §14). Document vivant, mis à jour à chaque incrément.
 > Les mentions **[VÉRIFIÉ]** renvoient à une source officielle consultée pendant la rédaction.
 > Les mentions **[À VÉRIFIER]** signalent un comportement non documenté ou une source inaccessible : chacune devient soit une question pour vous, soit un point de la recette manuelle.
+> **v2 en préparation :** le remplacement de WireGuard direct par Tailscale (aucune redirection de port sur la box) est décrit dans [`PLAN-TAILSCALE.md`](PLAN-TAILSCALE.md), en attente de validation.
 
 ---
 
